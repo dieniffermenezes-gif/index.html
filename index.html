@@ -1,11 +1,364 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>desenvolvimento</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quiz Harry Potter</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@300;400&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: #f4f4f4;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .quiz-container {
+      background: rgba(0, 0, 0, 0.7);
+      border: 3px solid #d4af37;
+      border-radius: 15px;
+      padding: 30px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      text-align: center;
+      color: #d4af37;
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    }
+
+    .question {
+      margin-bottom: 25px;
+      font-size: 1.1rem;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .option {
+      background: #2c2c44;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .option:hover {
+      background: #3a3a55;
+      border-color: #d4af37;
+      transform: translateX(5px);
+    }
+
+    .option.selected {
+      background: #d4af37;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .option.correct {
+      background: #28a745;
+      color: white;
+    }
+
+    .option.incorrect {
+      background: #dc3545;
+      color: white;
+    }
+
+    button {
+      background: #d4af37;
+      color: #000;
+      border: none;
+      padding: 12px 25px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+      width: 100%;
+      transition: 0.3s;
+      font-family: 'Cinzel', serif;
+    }
+
+    button:hover {
+      background: #f1c40f;
+      transform: scale(1.05);
+    }
+
+    .result {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .progress {
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #d4af37;
+      width: 0;
+      transition: width 0.4s ease;
+    }
+
+    @media (max-width: 500px) {
+      h1 { font-size: 1.8rem; }
+      .quiz-container { padding: 20px; }
+    }
+  </style>
 </head>
 <body>
-  <h1> ola mundo</h1>
+  <div class="quiz-container">
+    <h1>Quiz Mágico de Harry Potter</h1>
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div id="quiz">
+      <!-- Perguntas serão inseridas aqui via JS -->
+    </div>
+
+    <button id="nextBtn" class="hidden" onclick="nextQuestion()">Próxima Pergunta</button>
+    <button id="submitBtn" class="hidden" onclick="submitQuiz()">Ver Resultado</button>
+
+    <div id="result" class="result hidden"></div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        question: "Qual é o nome completo de Harry Potter?",
+        options: [
+          "Harry James Potter",
+          "Harry Albus Potter",
+          "Harry Severus Potter",
+          "Harry Ronald Potter"
+        ],
+        answer: 0
+      },
+      {
+        question: "Qual é a casa de Harry em Hogwarts?",
+        options: ["Corvinal", "Lufa-Lufa", "Sonserina", "Grifinória"],
+        answer: 3
+      },
+      {
+        question: "Quem é o diretor de Hogwarts no primeiro livro?",
+        options: ["Severus Snape", "Minerva McGonagall", "Alvo Dumbledore", "Fílio Flitwick"],
+        answer: 2
+      },
+      {
+        question: "Qual é o nome do elfo doméstico que serve a família Black?",
+        options: ["Dobby", "Winky", "Kreacher", "Hokey"],
+        answer: 2
+      },
+      {
+        question: "Qual feitiço é usado para desarmar o oponente?",
+        options: ["Expelliarmus", "Accio", "Lumos", "Protego"],
+        answer: 0
+      }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+    let selectedAnswer = null;
+
+    const quizDiv = document.getElementById('quiz');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const resultDiv = document.getElementById('result');
+    const progressBar = document.getElementById('progressBar');
+
+    function loadQuestion() {
+      const q = questions[currentQuestion];
+      quizDiv.innerHTML = `
+        <div class="question">
+          <strong>${currentQuestion + 1}. ${q.question}</strong>
+        </div>
+        <div class="options">
+          ${q.options.map((opt, i) => `
+            <div class="option" onclick="selectOption(${i}, this)">
+              ${opt}
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Atualiza barra de progresso
+      progressBar.style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
+
+      nextBtn.classList.add('hidden');
+      submitBtn.classList.add('hidden');
+      selectedAnswer = null;
+    }
+
+    function selectOption(index, element) {
+      // Remove seleção anterior
+      document.querySelectorAll('.option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+
+      // Seleciona nova opção
+      element.classList.add('selected');
+      selectedAnswer = index;
+
+      // Mostra botão de próxima
+      if (currentQuestion < questions.length - 1) {
+        nextBtn.classList.remove('hidden');
+      } else {
+        submitBtn.classList.remove('hidden');
+      }
+    }
+
+    function nextQuestion() {
+      if (selectedAnswer === null) return;
+
+      const correct = questions[currentQuestion].answer;
+      const options = document.querySelectorAll('.option');
+
+      // Mostra resposta correta
+      options[correct].classList.add('correct');
+      if (selectedAnswer !== correct) {
+        options[selectedAnswer].classList.add('incorrect');
+      } else {
+        score++;
+      }
+
+      // Desabilita cliques
+      options.forEach(opt => opt.style.pointerEvents = 'none');
+
+      setTimeout(() => {
+        currentQuestion++;
+        if (currentQuestion < questions.length) {
+          loadQuestion();
+        }
+      }, 1500);
+    }
+
+    function submitQuiz() {
+      if (selectedAnswer === null) return;
+
+      const correct = questions[currentQuestion].answer;
+      const options = document.querySelectorAll('.option');
+
+      options[correct].classList.add('correct');
+      if (selectedAnswer !== correct) {
+        options[selectedAnswer].classList.add('incorrect');
+      } else {
+        score++;
+      }
+
+      setTimeout(() => {
+        quizDiv.classList.add('hidden');
+        nextBtn.classList.add('hidden');
+        submitBtn.classList.add('hidden');
+
+        let message = "";
+        if (score === questions.length) {
+          message = "🪄 Perfeito! Você é um verdadeiro bruxo de Hogwarts!";
+        } else if (score >= questions.length * 0.7) {
+          message = "Ótimo! Você conhece bem o mundo mágico!";
+        } else if (score >= questions.length * 0.4) {
+          message = "Bom esforço! Revise os livros e volte mais forte!";
+        } else {
+          message = "Que pena... Talvez precise reler a série!";
+        }
+
+        resultDiv.innerHTML = `
+          <p>Você acertou <strong>${score}</strong> de <strong>${questions.length}</strong>!</p>
+          <p style="margin-top: 15px;">${message}</p>
+          <button onclick="location.reload()" style="margin-top: 20px; width: auto; padding: 10px 20px;">
+            Jogar Novamente
+          </button>
+        `;
+        resultDiv.classList.remove('hidden');
+      }, 1500);
+    }
+    const moreQuestions = [
+  {
+    question: "Qual é o nome do dragão que Harry enfrenta no Torneio Tribruxo?",
+    options: ["Norberto", "Fawkes", "Hungaro Rabo-Córneo", "Basilisco"],
+    answer: 2
+  },
+  {
+    question: "Quem é o autor do livro 'História da Magia' usado em Hogwarts?",
+    options: ["Bathilda Bagshot", "Gilderoy Lockhart", "Newt Scamander", "Miranda Goshawk"],
+    answer: 0
+  },
+  {
+    question: "Qual é o patrono de Luna Lovegood?",
+    options: ["Cisne", "Coelho", "Lontra", "Cervo"],
+    answer: 1
+  },
+  {
+    question: "Qual objeto pertenceu a Helga Hufflepuff (Lufa-Lufa)?",
+    options: ["Taça", "Diadema", "Medalhão", "Espada"],
+    answer: 0
+  },
+  {
+    question: "Qual feitiço Hermione usa para consertar os óculos de Harry no trem?",
+    options: ["Reparo", "Oculus Reparo", "Wingardium Leviosa", "Alohomora"],
+    answer: 1
+  },
+  {
+    question: "Qual é o nome do irmão gêmeo de Parvati Patil?",
+    options: ["Padma", "Lavender", "Cho", "Penélope"],
+    answer: 0
+  },
+  {
+    question: "Quem matou o basilisco na Câmara Secreta?",
+    options: ["Harry Potter", "Fawkes", "Tom Riddle", "Espada de Gryffindor"],
+    answer: 3
+  },
+  {
+    question: "Qual é o nome do bar em Hogsmeade onde os alunos vão?",
+    options: ["Três Vassouras", "Cabeça de Javali", "Caldeirão Furado", "Madame Puddifoot"],
+    answer: 0
+  },
+  {
+    question: "Qual é o número da plataforma 9¾ no King's Cross?",
+    options: ["9¾", "9½", "10¾", "11"],
+    answer: 0
+  },
+  {
+    question: "Qual Horcrux foi destruída por Neville Longbottom?",
+    options: ["Diário", "Medalhão", "Taça", "Naginit"],
+    answer: 3
+  }
+];
+
+    // Inicia o quiz
+    loadQuestion();
+  </script>
 </body>
 </html>
