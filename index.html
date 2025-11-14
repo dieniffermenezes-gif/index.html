@@ -64,7 +64,7 @@
       border: 2px solid transparent;
     }
 
-    .option:hover {
+    .option:hover:not(.disabled) {
       background: #3a3a55;
       border-color: #d4af37;
       transform: translateX(5px);
@@ -86,6 +86,11 @@
       color: white;
     }
 
+    .option.disabled {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
     button {
       background: #d4af37;
       color: #000;
@@ -101,9 +106,15 @@
       font-family: 'Cinzel', serif;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       background: #f1c40f;
       transform: scale(1.05);
+    }
+
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .result {
@@ -139,32 +150,27 @@
   </style>
 </head>
 <body>
-  <div class="quiz-container">
+  <div class="quiz-container" role="main">
     <h1>Quiz Mágico de Harry Potter</h1>
-    <div class="progress">
-      <div class="progress-bar" id="progressBar"></div>
+    <div class="progress" role="progressbar" aria-label="Progresso do Quiz">
+      <div class="progress-bar" id="progressBar" style="width: 0%"></div>
     </div>
 
-    <div id="quiz">
+    <div id="quiz" role="region" aria-live="polite">
       <!-- Perguntas serão inseridas aqui via JS -->
     </div>
 
-    <button id="nextBtn" class="hidden" onclick="nextQuestion()">Próxima Pergunta</button>
-    <button id="submitBtn" class="hidden" onclick="submitQuiz()">Ver Resultado</button>
+    <button id="nextBtn" class="hidden" onclick="nextQuestion()" disabled>Próxima Pergunta</button>
+    <button id="submitBtn" class="hidden" onclick="submitQuiz()" disabled>Ver Resultado</button>
 
-    <div id="result" class="result hidden"></div>
+    <div id="result" class="result hidden" role="alert"></div>
   </div>
 
   <script>
     const questions = [
       {
         question: "Qual é o nome completo de Harry Potter?",
-        options: [
-          "Harry James Potter",
-          "Harry Albus Potter",
-          "Harry Severus Potter",
-          "Harry Ronald Potter"
-        ],
+        options: ["Harry James Potter", "Harry Albus Potter", "Harry Severus Potter", "Harry Ronald Potter"],
         answer: 0
       },
       {
@@ -186,12 +192,63 @@
         question: "Qual feitiço é usado para desarmar o oponente?",
         options: ["Expelliarmus", "Accio", "Lumos", "Protego"],
         answer: 0
+      },
+      {
+        question: "Qual é o nome do dragão que Harry enfrenta no Torneio Tribruxo?",
+        options: ["Norberto", "Fawkes", "Hungaro Rabo-Córneo", "Basilisco"],
+        answer: 2
+      },
+      {
+        question: "Quem é o autor do livro 'História da Magia' usado em Hogwarts?",
+        options: ["Bathilda Bagshot", "Gilderoy Lockhart", "Newt Scamander", "Miranda Goshawk"],
+        answer: 0
+      },
+      {
+        question: "Qual é o patrono de Luna Lovegood?",
+        options: ["Cisne", "Coelho", "Lontra", "Cervo"],
+        answer: 1
+      },
+      {
+        question: "Qual objeto pertenceu a Helga Hufflepuff (Lufa-Lufa)?",
+        options: ["Taça", "Diadema", "Medalhão", "Espada"],
+        answer: 0
+      },
+      {
+        question: "Qual feitiço Hermione usa para consertar os óculos de Harry no trem?",
+        options: ["Reparo", "Oculus Reparo", "Wingardium Leviosa", "Alohomora"],
+        answer: 1
+      },
+      {
+        question: "Qual é o nome do irmão gêmeo de Parvati Patil?",
+        options: ["Padma", "Lavender", "Cho", "Penélope"],
+        answer: 0
+      },
+      {
+        question: "Quem matou o basilisco na Câmara Secreta?",
+        options: ["Harry Potter", "Fawkes", "Tom Riddle", "Espada de Gryffindor"],
+        answer: 0 // Note: Harry used the sword, but he is the one who killed the basilisk
+      },
+      {
+        question: "Qual é o nome do bar em Hogsmeade onde os alunos vão?",
+        options: ["Três Vassouras", "Cabeça de Javali", "Caldeirão Furado", "Madame Puddifoot"],
+        answer: 0
+      },
+      {
+        question: "Qual é o número da plataforma 9¾ no King's Cross?",
+        options: ["9¾", "9½", "10¾", "11"],
+        answer: 0
+      },
+      {
+        question: "Qual Horcrux foi destruída por Neville Longbottom?",
+        options: ["Diário", "Medalhão", "Taça", "Nagini"],
+        answer: 3
       }
     ];
 
     let currentQuestion = 0;
     let score = 0;
     let selectedAnswer = null;
+    let shuffledQuestions = [];
 
     const quizDiv = document.getElementById('quiz');
     const nextBtn = document.getElementById('nextBtn');
@@ -199,15 +256,36 @@
     const resultDiv = document.getElementById('result');
     const progressBar = document.getElementById('progressBar');
 
+    // Função para embaralhar array (Fisher-Yates)
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // Carrega e embaralha perguntas no início
+    function initializeQuiz() {
+      shuffledQuestions = shuffleArray([...questions]).slice(0, 10); // Limita a 10 perguntas
+      loadQuestion();
+    }
+
     function loadQuestion() {
-      const q = questions[currentQuestion];
+      if (currentQuestion >= shuffledQuestions.length) return;
+
+      const q = shuffledQuestions[currentQuestion];
       quizDiv.innerHTML = `
         <div class="question">
           <strong>${currentQuestion + 1}. ${q.question}</strong>
         </div>
         <div class="options">
           ${q.options.map((opt, i) => `
-            <div class="option" onclick="selectOption(${i}, this)">
+            <div class="option" 
+                 role="button" 
+                 tabindex="0" 
+                 onclick="selectOption(${i}, this)" 
+                 onkeydown="if(event.key === 'Enter') selectOption(${i}, this)">
               ${opt}
             </div>
           `).join('')}
@@ -215,10 +293,14 @@
       `;
 
       // Atualiza barra de progresso
-      progressBar.style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
+      progressBar.style.width = `${((currentQuestion + 1) / shuffledQuestions.length) * 100}%`;
+      progressBar.setAttribute('aria-valuenow', currentQuestion + 1);
+      progressBar.setAttribute('aria-valuemax', shuffledQuestions.length);
 
       nextBtn.classList.add('hidden');
       submitBtn.classList.add('hidden');
+      nextBtn.disabled = true;
+      submitBtn.disabled = true;
       selectedAnswer = null;
     }
 
@@ -226,57 +308,79 @@
       // Remove seleção anterior
       document.querySelectorAll('.option').forEach(opt => {
         opt.classList.remove('selected');
+        opt.setAttribute('aria-selected', 'false');
       });
 
       // Seleciona nova opção
       element.classList.add('selected');
+      element.setAttribute('aria-selected', 'true');
       selectedAnswer = index;
 
-      // Mostra botão de próxima
-      if (currentQuestion < questions.length - 1) {
+      // Ativa botão apropriado
+      if (currentQuestion < shuffledQuestions.length - 1) {
         nextBtn.classList.remove('hidden');
+        nextBtn.disabled = false;
       } else {
         submitBtn.classList.remove('hidden');
+        submitBtn.disabled = false;
       }
     }
 
     function nextQuestion() {
-      if (selectedAnswer === null) return;
+      if (selectedAnswer === null) {
+        alert('Por favor, selecione uma opção antes de continuar.');
+        return;
+      }
 
-      const correct = questions[currentQuestion].answer;
+      const correct = shuffledQuestions[currentQuestion].answer;
       const options = document.querySelectorAll('.option');
 
       // Mostra resposta correta
       options[correct].classList.add('correct');
+      options[correct].setAttribute('aria-label', 'Resposta correta');
       if (selectedAnswer !== correct) {
         options[selectedAnswer].classList.add('incorrect');
+        options[selectedAnswer].setAttribute('aria-label', 'Resposta incorreta');
       } else {
         score++;
       }
 
       // Desabilita cliques
-      options.forEach(opt => opt.style.pointerEvents = 'none');
+      options.forEach(opt => {
+        opt.classList.add('disabled');
+        opt.setAttribute('aria-disabled', 'true');
+      });
 
       setTimeout(() => {
         currentQuestion++;
-        if (currentQuestion < questions.length) {
+        if (currentQuestion < shuffledQuestions.length) {
           loadQuestion();
         }
       }, 1500);
     }
 
     function submitQuiz() {
-      if (selectedAnswer === null) return;
+      if (selectedAnswer === null) {
+        alert('Por favor, selecione uma opção antes de continuar.');
+        return;
+      }
 
-      const correct = questions[currentQuestion].answer;
+      const correct = shuffledQuestions[currentQuestion].answer;
       const options = document.querySelectorAll('.option');
 
       options[correct].classList.add('correct');
+      options[correct].setAttribute('aria-label', 'Resposta correta');
       if (selectedAnswer !== correct) {
         options[selectedAnswer].classList.add('incorrect');
+        options[selectedAnswer].setAttribute('aria-label', 'Resposta incorreta');
       } else {
         score++;
       }
+
+      options.forEach(opt => {
+        opt.classList.add('disabled');
+        opt.setAttribute('aria-disabled', 'true');
+      });
 
       setTimeout(() => {
         quizDiv.classList.add('hidden');
@@ -284,81 +388,32 @@
         submitBtn.classList.add('hidden');
 
         let message = "";
-        if (score === questions.length) {
+        const scorePercentage = score / shuffledQuestions.length;
+        if (scorePercentage === 1) {
           message = "🪄 Perfeito! Você é um verdadeiro bruxo de Hogwarts!";
-        } else if (score >= questions.length * 0.7) {
+        } else if (scorePercentage >= 0.7) {
           message = "Ótimo! Você conhece bem o mundo mágico!";
-        } else if (score >= questions.length * 0.4) {
+        } else if (scorePercentage >= 0.4) {
           message = "Bom esforço! Revise os livros e volte mais forte!";
         } else {
           message = "Que pena... Talvez precise reler a série!";
         }
 
         resultDiv.innerHTML = `
-          <p>Você acertou <strong>${score}</strong> de <strong>${questions.length}</strong>!</p>
+          <p>Você acertou <strong>${score}</strong> de <strong>${shuffledQuestions.length}</strong>!</p>
           <p style="margin-top: 15px;">${message}</p>
-          <button onclick="location.reload()" style="margin-top: 20px; width: auto; padding: 10px 20px;">
+          <button onclick="location.reload()" 
+                  style="margin-top: 20px; width: auto; padding: 10px 20px;" 
+                  aria-label="Reiniciar o quiz">
             Jogar Novamente
           </button>
         `;
         resultDiv.classList.remove('hidden');
       }, 1500);
     }
-    const moreQuestions = [
-  {
-    question: "Qual é o nome do dragão que Harry enfrenta no Torneio Tribruxo?",
-    options: ["Norberto", "Fawkes", "Hungaro Rabo-Córneo", "Basilisco"],
-    answer: 2
-  },
-  {
-    question: "Quem é o autor do livro 'História da Magia' usado em Hogwarts?",
-    options: ["Bathilda Bagshot", "Gilderoy Lockhart", "Newt Scamander", "Miranda Goshawk"],
-    answer: 0
-  },
-  {
-    question: "Qual é o patrono de Luna Lovegood?",
-    options: ["Cisne", "Coelho", "Lontra", "Cervo"],
-    answer: 1
-  },
-  {
-    question: "Qual objeto pertenceu a Helga Hufflepuff (Lufa-Lufa)?",
-    options: ["Taça", "Diadema", "Medalhão", "Espada"],
-    answer: 0
-  },
-  {
-    question: "Qual feitiço Hermione usa para consertar os óculos de Harry no trem?",
-    options: ["Reparo", "Oculus Reparo", "Wingardium Leviosa", "Alohomora"],
-    answer: 1
-  },
-  {
-    question: "Qual é o nome do irmão gêmeo de Parvati Patil?",
-    options: ["Padma", "Lavender", "Cho", "Penélope"],
-    answer: 0
-  },
-  {
-    question: "Quem matou o basilisco na Câmara Secreta?",
-    options: ["Harry Potter", "Fawkes", "Tom Riddle", "Espada de Gryffindor"],
-    answer: 3
-  },
-  {
-    question: "Qual é o nome do bar em Hogsmeade onde os alunos vão?",
-    options: ["Três Vassouras", "Cabeça de Javali", "Caldeirão Furado", "Madame Puddifoot"],
-    answer: 0
-  },
-  {
-    question: "Qual é o número da plataforma 9¾ no King's Cross?",
-    options: ["9¾", "9½", "10¾", "11"],
-    answer: 0
-  },
-  {
-    question: "Qual Horcrux foi destruída por Neville Longbottom?",
-    options: ["Diário", "Medalhão", "Taça", "Naginit"],
-    answer: 3
-  }
-];
 
     // Inicia o quiz
-    loadQuestion();
+    initializeQuiz();
   </script>
 </body>
 </html>
